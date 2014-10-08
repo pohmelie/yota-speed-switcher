@@ -123,6 +123,22 @@ class YotaUI:
 
     def login(self):
 
+        self.menu = QtWidgets.QMenu()
+        self.tray = QtWidgets.QSystemTrayIcon(QtGui.QIcon("logo-yota-gray.png"))
+        self.tray.setContextMenu(self.menu)
+        self.tray.activated.connect(self.menu.exec)
+        self.tray.show()
+        if sys.platform == "linux":
+
+            mbox = QtWidgets.QMessageBox()
+            mbox.setText("Do you see tray icon?")
+            mbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+
+            while mbox.exec() == QtWidgets.QMessageBox.No:
+
+                self.tray.hide()
+                self.tray.show()
+
         self.ui.setEnabled(False)
         self.username = self.ui.username_edit.text()
         self.password = self.ui.password_edit.text()
@@ -130,12 +146,6 @@ class YotaUI:
         self.worker = YotaWorker()
         self.worker.result.connect(self.refresh_menu)
         self.worker.request(self.username, self.password)
-
-        self.menu = QtWidgets.QMenu()
-        self.tray = QtWidgets.QSystemTrayIcon(QtGui.QIcon("logo-yota-gray.png"))
-        self.tray.setContextMenu(self.menu)
-        self.tray.activated.connect(self.menu.exec)
-        self.tray.show()
 
 
     QtCore.pyqtSlot(dict)
