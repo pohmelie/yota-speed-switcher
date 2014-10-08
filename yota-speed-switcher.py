@@ -185,18 +185,21 @@ class YotaUI:
 
         self.menu.addSeparator()
         action = self.menu.addAction("Обновить…")
-        action.triggered.connect(lambda: self.worker.request(self.username, self.password))
+        action.triggered.connect(self.SpeedSetter())
         self.actions.append(action)
         self.menu.addAction("Выход").triggered.connect(sys.exit)
 
 
-    def SpeedSetter(self, code, action):
+    def SpeedSetter(self, code=None, action=None):
 
         def speed_setter():
 
             self.worker.request(self.username, self.password, code)
             self.tray.setIcon(QtGui.QIcon("logo-yota-gray.png"))
-            action.setChecked(False)
+            if action is not None:
+
+                action.setChecked(False)
+
             for a in self.actions:
 
                 a.setEnabled(False)
