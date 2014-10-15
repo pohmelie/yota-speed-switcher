@@ -22,8 +22,6 @@ class YotaUI:
             )
         )
 
-        self.speed_ui = urwid.Pile([])
-
         self.common_container = urwid.Filler(self.login_ui)
         self.ui = urwid.Frame(self.common_container, footer=self.status)
 
@@ -79,6 +77,7 @@ class YotaUI:
             state = step["code"] == data["offerCode"]
             content.append(urwid.RadioButton(group, desc, state=state, on_state_change=callback))
 
+        content.append(urwid.Button("Refresh", on_press=self.login_clicked))
         self.common_container.original_widget = urwid.Pile(content)
 
 
@@ -114,6 +113,5 @@ if __name__ == "__main__":
     ui = YotaUI()
     loop = urwid.MainLoop(
         ui.ui,
-        handle_mouse=False,
     )
     loop.run()
