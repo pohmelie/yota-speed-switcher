@@ -26,10 +26,15 @@ class YotaUI:
         self.ui = urwid.Frame(self.common_container, footer=self.status)
 
 
+    def set_loop(self, loop):
+
+        self.loop = loop
+
+
     def login_clicked(self, _):
 
         self.status.set_text("Logging in...")
-        loop.set_alarm_in(0.1, self.login)
+        self.loop.set_alarm_in(0.1, self.login)
 
 
     def login(self, *_):
@@ -91,7 +96,7 @@ class YotaUI:
         def speed_change_clicked(*args):
 
             self.status.set_text("Changing speed...")
-            loop.set_alarm_in(0.1, speed_changer)
+            self.loop.set_alarm_in(0.1, speed_changer)
 
         def speed_changer(*args):
 
@@ -111,7 +116,6 @@ class YotaUI:
 if __name__ == "__main__":
 
     ui = YotaUI()
-    loop = urwid.MainLoop(
-        ui.ui,
-    )
+    loop = urwid.MainLoop(ui.ui)
+    ui.set_loop(loop)
     loop.run()
