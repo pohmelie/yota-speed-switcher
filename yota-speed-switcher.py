@@ -1,8 +1,12 @@
 #!/usr/bin/python3
+'''yota speed switcher
+
+Usage:
+    yota-speed-switcher [pyqt5 | urwid]
+'''
 
 def try_pyqt5():
 
-    import foobar
     import sys
     from PyQt5 import QtWidgets
     from ui_qt import YotaUI
@@ -16,15 +20,35 @@ def try_urwid():
     import urwid
 
 
+scheme = (
+    ("pyqt5", try_pyqt5),
+    ("urwid", try_urwid),
+)
+
+
 if __name__ == "__main__":
 
-    for f in (try_pyqt5, try_urwid):
+    from docopt import docopt
 
-        try:
+    args = docopt(__doc__, version="yota speed switcher")
+    if any(args.values()):
 
-            f()
-            break
+        for t, value in args.items():
 
-        except ImportError:
+            if value:
 
-            print(str.format("'{}' import failed", f.__name__))
+                scheme[t]()
+                break
+
+    else:
+
+        for _, f in scheme:
+
+            try:
+
+                f()
+                break
+
+            except ImportError:
+
+                print(str.format("'{}' import failed", f.__name__))
