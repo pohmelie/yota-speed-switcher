@@ -28,6 +28,10 @@ scheme = (
 
 if __name__ == "__main__":
 
+    import os
+
+    os.environ["REQUESTS_CA_BUNDLE"] = os.path.join(os.getcwd(), "cacert.pem")
+
     from docopt import docopt
 
     args = docopt(__doc__, version="yota speed switcher")

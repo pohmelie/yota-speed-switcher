@@ -101,6 +101,7 @@ class YotaUI:
             self.steps[fmt] = step["code"]
             action = QtWidgets.QAction(desc, self.ui)
             action.setCheckable(True)
+            print(step["code"], step["speedNumber"], step["speedString"])
             if step["code"] == data["offerCode"]:
 
                 action.setChecked(True)
