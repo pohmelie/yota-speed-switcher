@@ -19,7 +19,7 @@ options = {
 executables = [
     Executable(
         script="yota-speed-switcher.py",
-        # base="Win32GUI",
+        base="Win32GUI",
         targetName="yota-speed-switcher.exe",
         compress=True,
         copyDependentFiles=True,
