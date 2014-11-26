@@ -62,7 +62,7 @@ class YotaUI:
         self.menu = QtWidgets.QMenu()
         self.tray = QtWidgets.QSystemTrayIcon(QtGui.QIcon("logo-yota-gray.png"))
         self.tray.setContextMenu(self.menu)
-        self.tray.activated.connect(self.menu.exec)
+        self.tray.activated.connect(lambda: self.menu.exec(QtGui.QCursor.pos()))
         self.tray.show()
         if sys.platform == "linux":
 
