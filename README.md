@@ -6,3 +6,4 @@ Simple systray/curses-based yota speed switcher for one device.
 * pyqt5 or urwid
 * requests
 * beautifulsoup4
+* docopt
