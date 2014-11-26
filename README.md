@@ -7,3 +7,5 @@ Simple systray/curses-based yota speed switcher for one device.
 * requests
 * beautifulsoup4
 * docopt
+
+[download page](http://pohmelie.github.io/yota-speed-switcher)
