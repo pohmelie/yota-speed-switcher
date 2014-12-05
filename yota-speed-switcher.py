@@ -4,6 +4,8 @@
 Usage:
     yota-speed-switcher [pyqt5 | urwid]
 '''
+import collections
+
 
 def try_pyqt5():
 
@@ -18,12 +20,18 @@ def try_pyqt5():
 def try_urwid():
 
     import urwid
+    from ui_urwid import YotaUI
+
+    ui = YotaUI()
+    loop = urwid.MainLoop(ui.ui)
+    ui.set_loop(loop)
+    loop.run()
 
 
-scheme = (
+scheme = collections.OrderedDict((
     ("pyqt5", try_pyqt5),
     ("urwid", try_urwid),
-)
+))
 
 
 if __name__ == "__main__":
@@ -46,7 +54,7 @@ if __name__ == "__main__":
 
     else:
 
-        for _, f in scheme:
+        for f in scheme.values():
 
             try:
 
