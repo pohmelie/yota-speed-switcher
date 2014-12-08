@@ -3,6 +3,7 @@ import queue
 import json
 import pathlib
 import functools
+import datetime
 
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from bs4 import BeautifulSoup as bs
@@ -58,6 +59,7 @@ class YotaUI:
         self.hide_on_close(self.login_ui)
 
         self.schedule_ui = ScheduleUI()
+        self.schedule_ui.schedules_refreshed.connect(self.schedules_refreshed)
         self.hide_on_close(self.schedule_ui)
 
         self.options_filename = "options.json"
@@ -87,6 +89,44 @@ class YotaUI:
 
         self.login_ui.show()
 
+        self.launched = {}
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.check_schedule)
+        self.timer.start(1000)
+
+
+    def check_schedule(self):
+
+        if not self.options["schedule_data"]["use_schedules"]:
+
+            return
+
+        dt = datetime.datetime.today()
+        d = datetime.date.today()
+        for schedule in self.options["schedule_data"]["schedules"]:
+
+            h, m = schedule["event_time"]
+            label = (h, m, schedule["speed"])
+            if label in self.launched and self.launched[label] == d:
+
+                continue
+
+            if dt.weekday() in schedule["days_of_week"] and dt.hour == h and dt.minute == m:
+
+                self.launched[label] = d
+                for action in self.actions:
+
+                    if str.startswith(action.text(), schedule["speed"]):
+
+                        action.triggered.emit()
+
+
+    @QtCore.pyqtSlot(dict)
+    def schedules_refreshed(self, schedules):
+
+        self.options["schedule_data"] = schedules
+        self.save_options()
+
 
     def hide_on_close(self, ui):
 
@@ -115,6 +155,10 @@ class YotaUI:
                 "username": "",
                 "password": "",
                 "remember_me": False,
+                "schedule_data": {
+                    "schedules": [],
+                    "use_schedules": False,
+                },
             }
 
 
@@ -123,6 +167,7 @@ class YotaUI:
         self.login_ui.username_edit.setText(self.options["username"])
         self.login_ui.password_edit.setText(self.options["password"])
         self.login_ui.remember_me_edit.setCheckState(QtCore.Qt.Checked if self.options["remember_me"] else QtCore.Qt.Unchecked)
+        self.schedule_ui.load_schedules(self.options["schedule_data"])
 
 
     def save_options(self):

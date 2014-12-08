@@ -1,4 +1,5 @@
 import datetime
+import operator
 
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from bs4 import BeautifulSoup as bs
@@ -81,22 +82,27 @@ class ScheduleModel(QtCore.QAbstractListModel):
 
     def clear(self):
 
-        self.reset()
+        self.beginResetModel()
         self.schedules = []
+        self.endResetModel()
 
 
 class ScheduleUI(QtWidgets.QWidget):
+
+    schedules_refreshed = QtCore.pyqtSignal(dict)
 
     def __init__(self):
 
         super().__init__()
         uic.loadUi("schedule.ui", self)
         self.schedule_model = ScheduleModel()
+        self.slider_data = None
 
         self.schedule_view.setModel(self.schedule_model)
         self.schedule_view.doubleClicked.connect(self.edit)
         self.add_schedule_button.clicked.connect(self.add_schedule)
         self.remove_schedule_button.clicked.connect(self.remove_schedule)
+        self.use_schedule_checkbox.stateChanged.connect(self.send_schedule_data)
 
         self.setWindowIcon(QtGui.QIcon("logo-yota.png"))
         self.setWindowTitle("Расписание")
@@ -105,18 +111,19 @@ class ScheduleUI(QtWidgets.QWidget):
     QtCore.pyqtSlot(dict)
     def set_slider_data(self, slider_data):
 
-        print(slider_data)
         self.slider_data = slider_data
 
 
     def add_schedule(self):
 
         self.schedule_model.append(YotaChangeSpeedEvent())
+        self.send_schedule_data()
 
 
     def remove_schedule(self):
 
         self.schedule_model.remove(self.schedule_view.currentIndex().row())
+        self.send_schedule_data()
 
 
     def edit(self, index):
@@ -129,6 +136,15 @@ class ScheduleUI(QtWidgets.QWidget):
 
             self.schedule_model.schedules[index.row()] = ed.get_event()
             self.schedule_model.dataChanged.emit(index, index)
+            self.send_schedule_data()
+
+
+    def send_schedule_data(self):
+
+        self.schedules_refreshed.emit({
+            "schedules": self.dump_schedules(),
+            "use_schedules": self.use_schedule_checkbox.checkState() == QtCore.Qt.Checked,
+        })
 
 
     def ui_close_event(self, e):
@@ -144,10 +160,12 @@ class ScheduleUI(QtWidgets.QWidget):
 
     def load_schedules(self, o):
 
-        self.schedule_model.reset()
-        for d in o:
+        self.schedule_model.clear()
+        for d in o["schedules"]:
 
             self.schedule_model.append(YotaChangeSpeedEvent.from_dict(d))
+
+        self.use_schedule_checkbox.setCheckState(QtCore.Qt.Checked if o["use_schedules"] else QtCore.Qt.Unchecked)
 
 
 class EditSchedule(QtWidgets.QDialog):
