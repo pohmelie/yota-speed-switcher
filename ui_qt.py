@@ -4,11 +4,14 @@ import json
 import pathlib
 import functools
 import datetime
+import time
+import collections
 
+import requests
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from bs4 import BeautifulSoup as bs
 
-from ui_qt_schedule import ScheduleUI
+from ui_qt_options import OptionsUI
 from yota import yota
 
 
@@ -46,6 +49,60 @@ class YotaWorker(QtCore.QObject):
                 self.result.emit({})
 
 
+class StatusWorker(QtCore.QObject):
+
+    result = QtCore.pyqtSignal(int, int)
+
+    def __init__(self):
+
+        super().__init__()
+
+        self.thread = QtCore.QThread()
+        self.moveToThread(self.thread)
+        self.thread.started.connect(self.run)
+        self.thread.start()
+
+
+    def parse_yota_info(self, s):
+
+        data = {}
+        for line in filter(len, str.split(s, "\n")):
+
+            k, v = str.split(line, "=")
+            prev, curr = None, data
+            for node in str.split(k, "."):
+
+                if node not in curr:
+
+                    curr[node] = {}
+
+                prev, curr = curr, curr[node]
+
+            else:
+
+                prev[node] = v
+
+        return data
+
+
+    @QtCore.pyqtSlot()
+    def run(self):
+
+        while True:
+
+            try:
+
+                r = requests.get("http://10.0.0.1/status", timeout=1)
+                d = self.parse_yota_info(r.text)
+                self.result.emit(*map(int, (d["CurDownlinkThroughput"], d["CurUplinkThroughput"])))
+
+            except:
+
+                pass
+
+            time.sleep(1)
+
+
 class YotaUI:
 
     def __init__(self):
@@ -58,9 +115,9 @@ class YotaUI:
         self.login_ui.setWindowTitle("yota-speed-switcher")
         self.hide_on_close(self.login_ui)
 
-        self.schedule_ui = ScheduleUI()
-        self.schedule_ui.schedules_refreshed.connect(self.schedules_refreshed)
-        self.hide_on_close(self.schedule_ui)
+        self.options_ui = OptionsUI()
+        self.options_ui.options_refreshed.connect(self.options_refreshed)
+        self.hide_on_close(self.options_ui)
 
         self.options_filename = "options.json"
         self.load_options()
@@ -89,10 +146,21 @@ class YotaUI:
 
         self.login_ui.show()
 
+        self.speed_status_data = collections.deque()
+        self.speed_status_worker = StatusWorker()
+        self.speed_status_worker.result.connect(self.speed_status_refresh)
+
         self.launched = {}
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.check_schedule)
         self.timer.start(1000)
+
+
+    @QtCore.pyqtSlot(int, int)
+    def speed_status_refresh(self, down, up):
+
+        pass
+        # self.speed_status_data.append(max(down, up))
 
 
     def check_schedule(self):
@@ -122,9 +190,9 @@ class YotaUI:
 
 
     @QtCore.pyqtSlot(dict)
-    def schedules_refreshed(self, schedules):
+    def options_refreshed(self, o):
 
-        self.options["schedule_data"] = schedules
+        self.options.update(o)
         self.save_options()
 
 
@@ -156,9 +224,15 @@ class YotaUI:
                 "password": "",
                 "remember_me": False,
                 "schedule_data": {
-                    "schedules": [],
                     "use_schedules": False,
+                    "schedules": [],
                 },
+                "autospeed_data": {
+                    "use_autospeed": False,
+                    "low_speed_index": 1,
+                    "high_speed_index": 12,
+                    "timeout": 5,
+                }
             }
 
 
@@ -167,7 +241,7 @@ class YotaUI:
         self.login_ui.username_edit.setText(self.options["username"])
         self.login_ui.password_edit.setText(self.options["password"])
         self.login_ui.remember_me_edit.setCheckState(QtCore.Qt.Checked if self.options["remember_me"] else QtCore.Qt.Unchecked)
-        self.schedule_ui.load_schedules(self.options["schedule_data"])
+        self.options_ui.load_options(self.options)
 
 
     def save_options(self):
@@ -216,7 +290,7 @@ class YotaUI:
 
         self.worker = YotaWorker()
         self.worker.result.connect(self.refresh_menu)
-        self.worker.result.connect(self.schedule_ui.set_slider_data)
+        self.worker.result.connect(self.options_ui.set_slider_data)
         self.worker.request(self.options["username"], self.options["password"])
 
 
@@ -268,7 +342,7 @@ class YotaUI:
             action.triggered.connect(self.SpeedSetter())
             self.actions.append(action)
 
-        self.menu.addAction("Расписание...").triggered.connect(lambda: self.schedule_ui.show())
+        self.menu.addAction("Настройки...").triggered.connect(lambda: self.options_ui.show())
         self.menu.addAction("Смена пользователя").triggered.connect(self.logout)
         self.menu.addAction("Выход").triggered.connect(sys.exit)
 
