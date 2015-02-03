@@ -6,6 +6,7 @@ import functools
 import datetime
 import time
 import collections
+import textwrap
 
 import requests
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
@@ -51,7 +52,7 @@ class YotaWorker(QtCore.QObject):
 
 class StatusWorker(QtCore.QObject):
 
-    result = QtCore.pyqtSignal(int, int)
+    result = QtCore.pyqtSignal(dict)
 
     def __init__(self):
 
@@ -92,15 +93,17 @@ class StatusWorker(QtCore.QObject):
 
             try:
 
+                start = datetime.datetime.now()
                 r = requests.get("http://10.0.0.1/status", timeout=1)
                 d = self.parse_yota_info(r.text)
-                self.result.emit(*map(int, (d["CurDownlinkThroughput"], d["CurUplinkThroughput"])))
+                self.result.emit(d)
 
             except:
 
                 pass
 
-            time.sleep(1)
+            end = datetime.datetime.now()
+            time.sleep(max(0, 1 - (end - start).total_seconds()))
 
 
 class YotaUI:
@@ -146,7 +149,10 @@ class YotaUI:
 
         self.login_ui.show()
 
-        self.speed_status_data = collections.deque()
+        self.yota_data = self.actions = self.steps = None
+        self.switching_speed = False
+        self.speed_low_counter = 0
+        self.speed_start_time = datetime.datetime.now()
         self.speed_status_worker = StatusWorker()
         self.speed_status_worker.result.connect(self.speed_status_refresh)
 
@@ -156,11 +162,109 @@ class YotaUI:
         self.timer.start(1000)
 
 
-    @QtCore.pyqtSlot(int, int)
-    def speed_status_refresh(self, down, up):
+    @staticmethod
+    def human_speed(x):
 
-        pass
-        # self.speed_status_data.append(max(down, up))
+        x = int(x)
+        if x < 2 ** 20:
+
+            s = "{:.2f} Kibit/s".format(x / 2 ** 10)
+
+        else:
+
+            s = "{:.2f} Mibit/s".format(x / 2 ** 20)
+
+        return s
+
+
+    @staticmethod
+    def human_size(x):
+
+        x = int(x)
+        suffixes = ("B", "KiB", "MiB", "GiB", "TiB")
+        for i, name in enumerate(suffixes):
+
+            div = 2 ** (10 * i)
+            if x / div < 2 ** 10 or i == len(suffixes) - 1:
+
+                if div == 1:
+
+                    s = "{} {}".format(x, name)
+
+                else:
+
+                    s = "{:.2f} {}".format(x / div, name)
+
+                break
+
+        return s
+
+
+    @staticmethod
+    def parse_speed(s):
+
+        v, speed, *_ = s.split()
+        try:
+
+            if "Кбит" in speed:
+
+                mul = 2 ** 10
+
+            else:
+
+                mul = 2 ** 20
+
+            return int(float(v) * mul)
+
+        except:
+
+            pass
+
+
+    @QtCore.pyqtSlot(dict)
+    def speed_status_refresh(self, d):
+
+        template = textwrap.dedent('''\
+            {connected_time}
+            {max_down} / {max_up}
+            {curr_down} / {curr_up}
+            {data_recv} / {data_send}
+            {SINR} dB / {RSRP} dBm
+            {ip}
+            {firmware}
+        ''').strip()
+        self.options_ui.status_view.setText(template.format(
+            connected_time=datetime.timedelta(seconds=int(d["ConnectedTime"])),
+            max_down=YotaUI.human_speed(d["MaxDownlinkThroughput"]),
+            max_up=YotaUI.human_speed(d["MaxUplinkThroughput"]),
+            curr_down=YotaUI.human_speed(d["CurDownlinkThroughput"]),
+            curr_up=YotaUI.human_speed(d["CurUplinkThroughput"]),
+            data_recv=YotaUI.human_size(d["ReceivedBytes"]),
+            data_send=YotaUI.human_size(d["SentBytes"]),
+            SINR=d["3GPP"]["SINR"],
+            RSRP=d["3GPP"]["RSRP"],
+            ip=d["IP"],
+            firmware=d["FirmwareVersion"],
+        ))
+
+        if not self.switching_speed and self.yota_data and self.options["autospeed_data"]["use_autospeed"]:
+
+            low_index = self.options["autospeed_data"]["low_speed_index"]
+            high_index = self.options["autospeed_data"]["high_speed_index"]
+            desc = self.actions[low_index].text()
+            low_speed = YotaUI.parse_speed(desc)
+            if low_speed is not None:
+
+                curr_speed =  max(map(int, (d["CurDownlinkThroughput"], d["CurUplinkThroughput"])))
+                if curr_speed > (low_speed * 0.9 - 20 * 2 ** 10) and self.actions[low_index].isChecked():
+
+                    self.actions[high_index].triggered.emit()
+                    self.switching_speed = True
+                    self.speed_low_counter = 0
+
+                elif not self.actions[low_index].isChecked():
+
+                    pass
 
 
     def check_schedule(self):
@@ -308,7 +412,7 @@ class YotaUI:
             self.login_ui.hide()
             self.tray.setIcon(QtGui.QIcon("logo-yota.png"))
 
-            data = next(iter(slider_data.values()))
+            self.yota_data = data = next(iter(slider_data.values()))
             fields = (
                 "speedNumber",
                 "speedString",
@@ -323,7 +427,7 @@ class YotaUI:
             for step in data["steps"]:
 
                 desc = str.format(fmt, *map(lambda k: bs(step[k]).text, fields))
-                self.steps[fmt] = step["code"]
+                self.steps[desc] = step["code"]
                 action = QtWidgets.QAction(desc, self.login_ui)
                 action.setCheckable(True)
                 print(step["code"], step["speedNumber"], step["speedString"])
@@ -345,6 +449,7 @@ class YotaUI:
         self.menu.addAction("Настройки...").triggered.connect(lambda: self.options_ui.show())
         self.menu.addAction("Смена пользователя").triggered.connect(self.logout)
         self.menu.addAction("Выход").triggered.connect(sys.exit)
+        self.switching_speed = False
 
 
     def remove_options(self):
@@ -376,6 +481,7 @@ class YotaUI:
 
         def speed_setter():
 
+            self.switching_speed = True
             self.worker.request(self.options["username"], self.options["password"], code)
             self.tray.setIcon(QtGui.QIcon("logo-yota-gray.png"))
             if action is not None:
