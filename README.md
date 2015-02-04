@@ -15,5 +15,5 @@ Simple systray/curses-based yota speed switcher for one device.
 * autoswitch speed on idle/high load
 * info page from device
 
-###urwid
+###urwid features:
 * simple speed switch
