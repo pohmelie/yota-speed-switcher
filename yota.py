@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 
 
-def yota(username, password, speed=None, timeout=10):
+def yota(username, password, speed=None, timeout=4):
 
     s = requests.Session()
 
