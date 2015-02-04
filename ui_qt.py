@@ -43,7 +43,17 @@ class YotaWorker(QtCore.QObject):
 
             try:
 
-                self.result.emit(yota(*self._request_queue.get()))
+                args = self._request_queue.get()
+                for _ in range(3):
+
+                    try:
+
+                        self.result.emit(yota(*args))
+                        break
+
+                    except:
+
+                        continue
 
             except:
 
@@ -149,9 +159,9 @@ class YotaUI:
 
         self.login_ui.show()
 
-        self.yota_data = self.actions = self.steps = None
+        self.actions = None
         self.switching_speed = False
-        self.speed_low_counter = 0
+        self.speed_low_counter = self.speed_high_counter = 0
         self.speed_start_time = datetime.datetime.now()
         self.speed_status_worker = StatusWorker()
         self.speed_status_worker.result.connect(self.speed_status_refresh)
@@ -247,24 +257,38 @@ class YotaUI:
             firmware=d["FirmwareVersion"],
         ))
 
-        if not self.switching_speed and self.yota_data and self.options["autospeed_data"]["use_autospeed"]:
+        if not self.switching_speed:
 
-            low_index = self.options["autospeed_data"]["low_speed_index"]
-            high_index = self.options["autospeed_data"]["high_speed_index"]
-            desc = self.actions[low_index].text()
-            low_speed = YotaUI.parse_speed(desc)
-            if low_speed is not None:
+            if self.actions and self.options["autospeed_data"]["use_autospeed"]:
 
-                curr_speed =  max(map(int, (d["CurDownlinkThroughput"], d["CurUplinkThroughput"])))
-                if curr_speed > (low_speed * 0.9 - 20 * 2 ** 10) and self.actions[low_index].isChecked():
+                low_index = self.options["autospeed_data"]["low_speed_index"]
+                high_index = self.options["autospeed_data"]["high_speed_index"]
+                desc = self.actions[low_index].text()
+                low_speed = YotaUI.parse_speed(desc)
+                if low_speed is not None:
 
-                    self.actions[high_index].triggered.emit()
-                    self.switching_speed = True
-                    self.speed_low_counter = 0
+                    curr_speed =  max(map(int, (d["CurDownlinkThroughput"], d["CurUplinkThroughput"])))
+                    low_bound_speed = low_speed * 0.9 - 20 * 2 ** 10
+                    if curr_speed > low_bound_speed:
 
-                elif not self.actions[low_index].isChecked():
+                        self.speed_high_counter += 1
+                        if self.speed_high_counter > 5:
 
-                    pass
+                            self.speed_low_counter = 0
+                            if self.actions[low_index].isChecked():
+
+                                self.actions[high_index].triggered.emit()
+
+                    else:
+
+                        if not self.actions[low_index].isChecked():
+
+                            self.speed_low_counter += 1
+                            if self.speed_low_counter >= self.options["autospeed_data"]["timeout"] * 60:
+
+                                self.actions[low_index].triggered.emit()
+
+                        self.speed_high_counter = 0
 
 
     def check_schedule(self):
@@ -412,7 +436,7 @@ class YotaUI:
             self.login_ui.hide()
             self.tray.setIcon(QtGui.QIcon("logo-yota.png"))
 
-            self.yota_data = data = next(iter(slider_data.values()))
+            data = next(iter(slider_data.values()))
             fields = (
                 "speedNumber",
                 "speedString",
@@ -422,15 +446,12 @@ class YotaUI:
                 "amountString",
             )
             fmt = "{} {} ({} {}, {} {})"
-            self.steps = {}
             self.actions = []
             for step in data["steps"]:
 
                 desc = str.format(fmt, *map(lambda k: bs(step[k]).text, fields))
-                self.steps[desc] = step["code"]
                 action = QtWidgets.QAction(desc, self.login_ui)
                 action.setCheckable(True)
-                print(step["code"], step["speedNumber"], step["speedString"])
                 if step["code"] == data["offerCode"]:
 
                     action.setChecked(True)
