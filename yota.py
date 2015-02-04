@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 
 
-def yota(username, password, speed=None):
+def yota(username, password, speed=None, timeout=10):
 
     s = requests.Session()
 
@@ -14,7 +14,11 @@ def yota(username, password, speed=None):
     s.get("https://my.yota.ru")
     if "@" in username:
 
-        r = s.post("https://my.yota.ru/selfcare/login/getUidByMail", data={"value": username})
+        r = s.post(
+            "https://my.yota.ru/selfcare/login/getUidByMail",
+            data={"value": username},
+            timeout=timeout,
+        )
         status, user_id = str.split(r.text, "|")
         if status == "ok":
 
@@ -26,7 +30,8 @@ def yota(username, password, speed=None):
             "https://my.yota.ru/selfcare/login/getUidByPhone",
             data={
                 "value": v,
-            }
+            },
+            timeout=timeout,
         )
         status, user_id = str.split(r.text, "|")
         if status == "ok":
@@ -41,7 +46,8 @@ def yota(username, password, speed=None):
             "org": "customer",
             "IDToken2": password,
             "IDToken1": token,
-        }
+        },
+        timeout=timeout,
     )
 
     for line in map(str.strip, str.split(r.text, "\n")):
@@ -70,6 +76,7 @@ def yota(username, password, speed=None):
     r = s.post(
         "https://my.yota.ru/selfcare/devices/changeOffer",
         params=parameters,
+        timeout=timeout,
     )
 
     return yota(username, password)
