@@ -44,7 +44,7 @@ class YotaWorker(QtCore.QObject):
             try:
 
                 args = self._request_queue.get()
-                for _ in range(3):
+                while True:
 
                     try:
 
