@@ -12,6 +12,8 @@ options = {
             "logo-yota.png",
             "logo-yota-gray.png",
             "login.ui",
+            "edit_dialog.ui",
+            "options.ui",
         ]
     }
 }
@@ -31,7 +33,7 @@ executables = [
 
 setup(
     name="yota speed switcher",
-    version="0.0.1",
+    version="0.1.0",
     description="",
     options=options,
     executables=executables,
