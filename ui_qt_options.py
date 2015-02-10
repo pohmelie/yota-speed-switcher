@@ -106,7 +106,9 @@ class OptionsUI(QtWidgets.QWidget):
         self.use_autospeed_checkbox.stateChanged.connect(self.send_options)
         self.speed_low_bound_edit.currentIndexChanged.connect(self.send_options)
         self.speed_high_bound_edit.currentIndexChanged.connect(self.send_options)
-        self.speed_timeout_edit.valueChanged.connect(self.send_options)
+        self.speed_low_timeout_edit.valueChanged.connect(self.send_options)
+        self.speed_high_timeout_edit.valueChanged.connect(self.send_options)
+        self.speed_low_threshold_edit.valueChanged.connect(self.send_options)
 
         self.setWindowIcon(QtGui.QIcon("logo-yota.png"))
         self.setWindowTitle("Настройки")
@@ -184,8 +186,10 @@ class OptionsUI(QtWidgets.QWidget):
                     "use_autospeed": self.use_autospeed_checkbox.checkState() == QtCore.Qt.Checked,
                     "low_speed_index": low,
                     "high_speed_index": high,
-                    "timeout": self.speed_timeout_edit.value(),
-                }
+                    "low_speed_timeout": self.speed_low_timeout_edit.value(),
+                    "high_speed_timeout": self.speed_high_timeout_edit.value(),
+                    "low_speed_threshold": self.speed_low_threshold_edit.value(),
+                },
             })
 
 
@@ -210,10 +214,13 @@ class OptionsUI(QtWidgets.QWidget):
 
         low, high = self.autospeed_bounds = o["low_speed_index"], o["high_speed_index"]
         self.use_autospeed_checkbox.setCheckState(QtCore.Qt.Checked if o["use_autospeed"] else QtCore.Qt.Unchecked)
-        self.speed_timeout_edit.setValue(o["timeout"])
 
         self.speed_low_bound_edit.setCurrentIndex(low)
         self.speed_high_bound_edit.setCurrentIndex(high)
+
+        self.speed_low_timeout_edit.setValue(o["low_speed_timeout"])
+        self.speed_high_timeout_edit.setValue(o["high_speed_timeout"])
+        self.speed_low_threshold_edit.setValue(o["low_speed_threshold"])
 
 
     def load_schedules(self, o):

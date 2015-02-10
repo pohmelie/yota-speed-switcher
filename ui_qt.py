@@ -161,7 +161,7 @@ class YotaUI:
 
         self.actions = None
         self.switching_speed = False
-        self.speed_low_counter = self.speed_high_counter = 0
+        self.speed_memory = []
         self.speed_start_time = datetime.datetime.now()
         self.speed_status_worker = StatusWorker()
         self.speed_status_worker.result.connect(self.speed_status_refresh)
@@ -265,30 +265,30 @@ class YotaUI:
                 high_index = self.options["autospeed_data"]["high_speed_index"]
                 desc = self.actions[low_index].text()
                 low_speed = YotaUI.parse_speed(desc)
+                curr_speed =  max(map(int, (d["CurDownlinkThroughput"], d["CurUplinkThroughput"])))
+
+                self.speed_memory.append(curr_speed)
+                low_timeout = self.options["autospeed_data"]["low_speed_timeout"]
+                high_timeout = self.options["autospeed_data"]["high_speed_timeout"]
+                self.speed_memory = self.speed_memory[-max(low_timeout, high_timeout):]
                 if low_speed is not None:
 
-                    curr_speed =  max(map(int, (d["CurDownlinkThroughput"], d["CurUplinkThroughput"])))
-                    low_bound_speed = low_speed * 0.9 - 20 * 2 ** 10
-                    if curr_speed > low_bound_speed:
+                    low_bound_speed = low_speed * self.options["autospeed_data"]["low_speed_threshold"] / 100
+                    if (
+                        len(self.speed_memory) >= high_timeout and
+                        sum(self.speed_memory[-high_timeout:]) / high_timeout > low_bound_speed and
+                        any(map(lambda i: self.actions[i].isChecked(), range(low_index + 1)))
+                    ):
 
-                        self.speed_high_counter += 1
-                        if self.speed_high_counter > 5:
+                        self.actions[high_index].triggered.emit()
 
-                            self.speed_low_counter = 0
-                            if self.actions[low_index].isChecked():
+                    elif (
+                        len(self.speed_memory) >= low_timeout and
+                        max(self.speed_memory[-low_timeout:]) <= low_bound_speed and
+                        any(map(lambda i: self.actions[i].isChecked(), range(low_index + 1, len(self.actions))))
+                    ):
 
-                                self.actions[high_index].triggered.emit()
-
-                    else:
-
-                        if not self.actions[low_index].isChecked():
-
-                            self.speed_low_counter += 1
-                            if self.speed_low_counter >= self.options["autospeed_data"]["timeout"] * 60:
-
-                                self.actions[low_index].triggered.emit()
-
-                        self.speed_high_counter = 0
+                        self.actions[low_index].triggered.emit()
 
 
     def check_schedule(self):
@@ -359,7 +359,9 @@ class YotaUI:
                     "use_autospeed": False,
                     "low_speed_index": 1,
                     "high_speed_index": 12,
-                    "timeout": 5,
+                    "low_speed_timeout": 300,
+                    "high_speed_timeout": 5,
+                    "low_speed_threshold": 80,
                 }
             }
 
