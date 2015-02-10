@@ -33,7 +33,7 @@ executables = [
 
 setup(
     name="yota speed switcher",
-    version="0.1.0",
+    version="0.1.1",
     description="",
     options=options,
     executables=executables,
