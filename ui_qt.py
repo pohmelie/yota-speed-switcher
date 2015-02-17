@@ -7,6 +7,7 @@ import datetime
 import time
 import collections
 import textwrap
+import traceback
 
 import requests
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
@@ -41,24 +42,18 @@ class YotaWorker(QtCore.QObject):
 
         while True:
 
-            try:
+            args = self._request_queue.get()
+            while True:
 
-                args = self._request_queue.get()
-                while True:
+                try:
 
-                    try:
+                    self.result.emit(yota(*args))
+                    break
 
-                        self.result.emit(yota(*args))
-                        break
+                except:
 
-                    except:
-
-                        time.sleep(5)
-                        continue
-
-            except:
-
-                self.result.emit({})
+                    time.sleep(5)
+                    traceback.print_exc()
 
 
 class StatusWorker(QtCore.QObject):
@@ -111,7 +106,7 @@ class StatusWorker(QtCore.QObject):
 
             except:
 
-                pass
+                traceback.print_exc()
 
             end = datetime.datetime.now()
             time.sleep(max(0, 1 - (end - start).total_seconds()))
@@ -229,7 +224,7 @@ class YotaUI:
 
         except:
 
-            pass
+            traceback.print_exc()
 
 
     @QtCore.pyqtSlot(dict)
@@ -348,6 +343,7 @@ class YotaUI:
 
         except:
 
+            traceback.print_exc()
             if f.is_file():
 
                 f.unlink()
@@ -393,6 +389,7 @@ class YotaUI:
 
         except:
 
+            traceback.print_exc()
             self.show_baloon("Can't save options")
             if f.is_file():
 
@@ -491,6 +488,7 @@ class YotaUI:
 
         except:
 
+            traceback.print_exc()
             self.show_baloon("Can't remove options file")
 
         self.options["remember_me"] = False
