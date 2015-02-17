@@ -53,6 +53,7 @@ class YotaWorker(QtCore.QObject):
 
                     except:
 
+                        time.sleep(5)
                         continue
 
             except:
@@ -233,6 +234,10 @@ class YotaUI:
 
     @QtCore.pyqtSlot(dict)
     def speed_status_refresh(self, d):
+
+        if "ConnectedTime" not in d:
+
+            return
 
         template = textwrap.dedent('''\
             {connected_time}
