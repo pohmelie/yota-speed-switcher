@@ -429,17 +429,22 @@ class YotaUI:
     QtCore.pyqtSlot(dict)
     def refresh_menu(self, slider_data=None):
 
+        print("refresh menu")
         self.menu.clear()
         self.login_ui.setEnabled(True)
+        print("refresh menu -> menu cleared")
         if isinstance(slider_data, dict) and not slider_data:
 
+            print("refresh menu -> can't login baloon")
             self.show_baloon("Can't login")
 
         elif slider_data is not None:
 
+            print("refresh menu -> slider data not None")
             self.login_ui.hide()
             self.tray.setIcon(QtGui.QIcon("logo-yota.png"))
 
+            print("refresh menu -> icon set back")
             data = next(iter(slider_data.values()))
             fields = (
                 "speedNumber",
@@ -451,9 +456,11 @@ class YotaUI:
             )
             fmt = "{} {} ({} {}, {} {})"
             self.actions = []
+            print("refresh menu -> data ok")
             for step in data["steps"]:
 
                 desc = str.format(fmt, *map(lambda k: bs(step[k]).text, fields))
+                print("refresh menu -> step", desc)
                 action = QtWidgets.QAction(desc, self.login_ui)
                 action.setCheckable(True)
                 if step["code"] == data["offerCode"]:
@@ -466,15 +473,18 @@ class YotaUI:
                 action.triggered.connect(self.SpeedSetter(step["code"], action))
                 self.actions.append(action)
 
+            print("refresh menu -> steps done")
             self.menu.addSeparator()
             action = self.menu.addAction("Обновить")
             action.triggered.connect(self.SpeedSetter())
             self.actions.append(action)
 
+        print("refresh menu adding actions")
         self.menu.addAction("Настройки...").triggered.connect(lambda: self.options_ui.show())
         self.menu.addAction("Смена пользователя").triggered.connect(self.logout)
         self.menu.addAction("Выход").triggered.connect(sys.exit)
         self.switching_speed = False
+        print("refresh menu done")
 
 
     def remove_options(self):
@@ -508,8 +518,9 @@ class YotaUI:
         def speed_setter():
 
             self.switching_speed = True
-            self.worker.request(self.options["username"], self.options["password"], code)
             self.tray.setIcon(QtGui.QIcon("logo-yota-gray.png"))
+            self.worker.request(self.options["username"], self.options["password"], code)
+            print("icon gray, request sended")
             if action is not None:
 
                 action.setChecked(False)
