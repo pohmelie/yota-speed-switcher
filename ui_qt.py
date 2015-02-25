@@ -431,8 +431,9 @@ class YotaUI:
 
         print("refresh menu")
         self.menu.clear()
-        self.login_ui.setEnabled(True)
         print("refresh menu -> menu cleared")
+        self.login_ui.setEnabled(True)
+        print("refresh menu -> login ui enabled")
         if isinstance(slider_data, dict) and not slider_data:
 
             print("refresh menu -> can't login baloon")
